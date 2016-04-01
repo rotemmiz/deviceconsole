@@ -56,16 +56,16 @@ static int find_space_offsets(const char *buffer, size_t length, size_t *space_o
 }
 static unsigned char should_print_message(const char *buffer, size_t length)
 {
-    if (length < 3) 
+    if (length < 3)
         return 0; // don't want blank lines
-    
+
     size_t space_offsets[3];
     find_space_offsets(buffer, length, space_offsets);
-    
+
     // Check whether process name matches the one passed to -p option and filter if needed
     if (requiredProcessName != NULL) {
         int nameLength = space_offsets[1] - space_offsets[0]; //This size includes the NULL terminator.
-        
+
         char *processName = malloc(nameLength);
         processName[nameLength - 1] = '\0';
         memcpy(processName, buffer + space_offsets[0] + 1, nameLength - 1);
@@ -73,16 +73,16 @@ static unsigned char should_print_message(const char *buffer, size_t length)
         for (int i = strlen(processName); i != 0; i--)
             if (processName[i] == '[')
                 processName[i] = '\0';
-        
+
         if (strcmp(processName, requiredProcessName) != 0){
             free(processName);
             return 0;
         }
         free(processName);
     }
-    
+
     // More filtering options can be added here and return 0 when they won't meed filter criteria
-    
+
     return 1;
 }
 
@@ -115,9 +115,9 @@ static void write_colored(int fd, const char *buffer, size_t length)
 
     size_t space_offsets[3];
     int o = find_space_offsets(buffer, length, space_offsets);
-    
+
     if (o == 3) {
-        
+
         // Log date and device name
         write_const(fd, COLOR_DARK_WHITE);
         write_fully(fd, buffer, space_offsets[0]);
@@ -192,12 +192,12 @@ static void SocketCallback(CFSocketRef s, CFSocketCallBackType type, CFDataRef a
         while ((buffer[extentLength] != '\0') && extentLength != length) {
             extentLength++;
         }
-        
+
         if (should_print_message(buffer, extentLength)) {
             printMessage(1, buffer, extentLength);
             printSeparator(1);
         }
-        
+
         length -= extentLength;
         buffer += extentLength;
     }
@@ -304,12 +304,12 @@ void simulator_write_callback(char *p, size_t size){
 
 static void log_simulator(){
     FILE *fp = fopen(simulatorLogPath, "r");
-    
+
     if(fp == NULL){
         fprintf(stderr, "Error: Could not open simulator log: %s", simulatorLogPath);
         return;
     }
-    
+
     log_tail(fp);
     fclose(fp);
 }
@@ -317,7 +317,7 @@ static void log_simulator(){
 int main (int argc, char * const argv[])
 {
     int c;
-    
+
     static struct option long_options[] =
     {
         {"udid", required_argument, NULL, 'u'},
@@ -329,9 +329,9 @@ int main (int argc, char * const argv[])
         {"force-color", no_argument, (int*)&force_color, 1},
         {NULL, 0, NULL, 0}
     };
-    
+
     int option_index = 0;
-    
+
     while((c = getopt_long(argc, argv, "u:s:p:", long_options, &option_index)) != -1){
         switch (c){
             case 0:
@@ -343,10 +343,10 @@ int main (int argc, char * const argv[])
                 break;
             case 's':
             {
-                int pathLength = strlen(optarg) + strlen(getpwuid(getuid())->pw_dir) + strlen("/Library/Logs/iOS Simulator//system.log");
+                int pathLength = strlen(optarg) + strlen(getpwuid(getuid())->pw_dir) + strlen("/Library/Logs/CoreSimulator//system.log");
                 simulatorLogPath = malloc(pathLength + 1);/* Don't forget null terminator! */
-                sprintf(simulatorLogPath, "%s/Library/Logs/iOS Simulator/%s/system.log", getpwuid(getuid())->pw_dir, optarg);
-                
+                sprintf(simulatorLogPath, "%s/Library/Logs/CoreSimulator/%s/system.log", getpwuid(getuid())->pw_dir, optarg);
+
                 if(access(simulatorLogPath, F_OK) == -1){
                     fprintf(stderr, "Error: Log for iOS Simulator version %s not found.\n", optarg);
                     return 1;
@@ -367,16 +367,16 @@ int main (int argc, char * const argv[])
                 abort();
         }
     }
-    
+
     if(requiredDeviceId && simulatorLogPath){
         fprintf(stderr, "Error: --simulator and --udid cannot be used simultaneously.\n");
         return 1;
     }
-    
+
     if(simulatorLogPath && debug){
         printf("Warning: ignoring --debug flag due to --simulator.\n");
     }
-    
+
     if (force_color || isatty(1)) {
         printMessage = &write_colored;
         printSeparator = use_separators ? &color_separator : &no_separator;
@@ -384,7 +384,7 @@ int main (int argc, char * const argv[])
         printMessage = &write_fully;
         printSeparator = use_separators ? &plain_separator : &no_separator;
     }
-    
+
     if(simulatorLogPath){
         log_simulator();
         return 1;
@@ -395,7 +395,7 @@ int main (int argc, char * const argv[])
     }
     CFRunLoopRun();
     return 0;
-    
+
 usage:
     fprintf(stderr, "Usage: %s [options]\nOptions:\n --udid <udid>          Show only logs from a specific device\n --simulator <version>  Show logs from iOS Simulator\n --debug                Include connect/disconnect messages in standard out\n --use-separators       Skip a line between each line.\n --process              Filter by process name.\n --force-color          Force colored text.\nControl-C to disconnect\nMail bug reports and suggestions to <ryan.petrich@medialets.com>\n", argv[0]);
     return 1;
